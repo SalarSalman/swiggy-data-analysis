@@ -3,130 +3,117 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-st.set_page_config(layout="wide", page_title="Swiggy Data Analysis Dashboard", page_icon="🍔")
-st.markdown("""
-<style>
-    .main {
-        background-color: #f5f5f5;
-    }
-    .block-container {
-        padding: 2rem;
-    }
-    h1, h2, h3, h4, h5, h6 {
-        color: #d6336c;
-    }
-</style>
-""", unsafe_allow_html=True)
+# Page configuration
+st.set_page_config(
+    page_title="Swiggy Data Analysis",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-st.title("🍽️ Swiggy Data Analysis Dashboard")
+# Sidebar
+st.sidebar.title("Swiggy Analysis")
+st.sidebar.markdown("Upload dataset and navigate through sections below.")
 
-# Sidebar for File Upload
-st.sidebar.header("📁 Upload Data")
+# File upload
 uploaded_file = st.sidebar.file_uploader("Upload your Swiggy CSV", type="csv")
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
-    st.sidebar.success("✅ CSV Uploaded Successfully")
+    st.sidebar.success("Dataset loaded: {} rows".format(len(df)))
 
-    # Dataset Overview
-    st.markdown("""
-    ## 🔍 Dataset Overview
-    """)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Entries", len(df))
-    col2.metric("Total Columns", len(df.columns))
-    col3.metric("Unique Cities", df['City'].nunique())
+    # Sidebar navigation
+    section = st.sidebar.radio(
+        "Select Section:",
+        [
+            "Overview",
+            "Price & Ratings",
+            "Cuisine & City Insights",
+            "Correlations & Trends",
+            "Outliers & Extremes",
+            "Final Summary"
+        ]
+    )
 
-    with st.expander("📄 View Sample Data"):
+    # Common metrics
+    total_entries = len(df)
+    total_columns = len(df.columns)
+    total_cities = df['City'].nunique()
+
+    if section == "Overview":
+        st.header("📊 Dataset Overview")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Total Entries", total_entries)
+        col2.metric("Columns", total_columns)
+        col3.metric("Unique Cities", total_cities)
         st.dataframe(df.head())
 
-    # Visualizations
-    st.markdown("## 📊 Visual Insights")
+    elif section == "Price & Ratings":
+        st.header("💸 Price & Rating Analysis")
+        with st.expander("📦 Price Distribution by City"):
+            fig, ax = plt.subplots(figsize=(10,4))
+            sns.boxplot(x='City', y='Price', data=df, ax=ax)
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+            st.pyplot(fig)
+        with st.expander("⭐ Price vs Avg Rating"):
+            fig, ax = plt.subplots(figsize=(10,4))
+            sns.scatterplot(x='Price', y='Avg ratings', data=df, ax=ax)
+            st.pyplot(fig)
+        with st.expander("📈 Food Type vs Price"):
+            top_foods = df['Food type'].value_counts().head(10).index
+            fig, ax = plt.subplots(figsize=(10,4))
+            sns.boxplot(x='Price', y='Food type', data=df[df['Food type'].isin(top_foods)], ax=ax)
+            st.pyplot(fig)
 
-    with st.expander("1. 📦 Price Distribution by City"):
-        fig1, ax1 = plt.subplots()
-        sns.boxplot(x='City', y='Price', data=df, ax=ax1)
-        ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45)
-        st.pyplot(fig1)
-        st.markdown(""">
-        - Median price across cities is ₹250–₹350
-        - Mumbai shows higher price variability
-        - All cities have outliers (up to ₹2500)
+    elif section == "Cuisine & City Insights":
+        st.header("🍽️ Cuisine and City Insights")
+        with st.expander("🌟 Top-Rated Restaurants"):
+            st.dataframe(df[df['Avg ratings']>=4.5][['Restaurant','City','Avg ratings','Price']].head(10))
+        with st.expander("🍱 Top Food Types by Volume"):
+            st.bar_chart(df['Food type'].value_counts().head(20))
+        with st.expander("🏙️ Top Cities by Restaurant Count"):
+            fig, ax = plt.subplots(figsize=(8,3))
+            df['City'].value_counts().head(10).plot(kind='bar', ax=ax)
+            ax.set_ylabel('Count')
+            st.pyplot(fig)
+        if 'Area' in df.columns:
+            with st.expander("🏘️ Average Price by Area"):
+                st.dataframe(df.groupby('Area')['Price'].mean().sort_values(ascending=False))
+
+    elif section == "Correlations & Trends":
+        st.header("🔄 Correlations & Trends")
+        with st.expander("📊 Correlation Matrix"):
+            fig, ax = plt.subplots(figsize=(6,4))
+            sns.heatmap(df[['Price','Avg ratings','Delivery time']].corr(), annot=True, cmap='coolwarm', ax=ax)
+            st.pyplot(fig)
+        with st.expander("📈 Price vs Cuisine Count"):
+            df['Cuisine Count'] = df['Food type'].apply(lambda x: len(str(x).split(',')))
+            fig, ax = plt.subplots(figsize=(8,4))
+            sns.boxplot(x='Cuisine Count', y='Price', data=df, ax=ax)
+            st.pyplot(fig)
+        with st.expander("🕐 Delivery Time Distribution by City"):
+            fig, ax = plt.subplots(figsize=(8,4))
+            sns.boxplot(x='City', y='Delivery time', data=df, ax=ax)
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=45)
+            st.pyplot(fig)
+
+    elif section == "Outliers & Extremes":
+        st.header("⚠️ Outliers & Extremes")
+        with st.expander("🍽️ Cheapest Food Items"):
+            cheapest = df[df['Price']>0].nsmallest(10,'Price')
+            st.dataframe(cheapest[['Restaurant','Food type','Price','City']])
+        with st.expander("💰 Costliest Food Items"):
+            costliest = df.nlargest(10,'Price')
+            st.dataframe(costliest[['Restaurant','Food type','Price','City']])
+
+    elif section == "Final Summary":
+        st.header("📌 Final Summary")
+        st.markdown("""
+        - Comprehensive insights across price, ratings, delivery, cuisine, and city metrics.  
+        - Easily navigate sections via sidebar.  
+        - Interactive expanders keep UI uncluttered.  
+        - Ready for stakeholder presentations and strategic decision-making.
         """)
-
-    with st.expander("2. ⭐ Price vs Average Rating"):
-        fig2, ax2 = plt.subplots()
-        sns.scatterplot(x='Price', y='Avg ratings', data=df, ax=ax2)
-        st.pyplot(fig2)
-        st.markdown(""">
-        - Most listings are ₹100–₹500 with ratings 3.5–5.0
-        - No strong correlation between price and rating
-        """)
-
-    with st.expander("3. ⚠️ Outlier Detection"):
-        st.write("### Restaurants with ₹0 Price")
-        st.dataframe(df[df['Price'] == 0])
-        st.write("### Restaurants with Price > ₹1300")
-        st.dataframe(df[df['Price'] > 1300])
-
-    with st.expander("4. 💰 Average Price by Food Type"):
-        st.dataframe(df.groupby('Food type')['Price'].mean().sort_values(ascending=False).head(10))
-
-    with st.expander("5. 🌟 Top-Rated Restaurants by City"):
-        st.dataframe(df.sort_values(by='Avg ratings', ascending=False)[['Restaurant', 'City', 'Avg ratings', 'Price']].head(10))
-
-    with st.expander("6. 🍽️ Most Popular Cuisines"):
-        fig3, ax3 = plt.subplots()
-        df['Food type'].value_counts().head(10).plot(kind='barh', ax=ax3)
-        st.pyplot(fig3)
-
-    with st.expander("7. 🕒 Delivery Time vs Rating"):
-        fig4, ax4 = plt.subplots()
-        sns.scatterplot(x='Delivery time', y='Avg ratings', data=df, ax=ax4)
-        st.pyplot(fig4)
-
-    with st.expander("8. 🥗 Cuisine Popularity vs Average Rating"):
-        st.dataframe(df.groupby('Food type')['Avg ratings'].mean().sort_values(ascending=False).head(10))
-
-    with st.expander("9. 🏙️ Top Cities by Restaurant Count"):
-        fig5, ax5 = plt.subplots()
-        df['City'].value_counts().head(10).plot(kind='bar', ax=ax5)
-        st.pyplot(fig5)
-
-    with st.expander("10. ⏱️ Price vs Delivery Time"):
-        fig6, ax6 = plt.subplots()
-        sns.scatterplot(x='Price', y='Delivery time', data=df, ax=ax6)
-        st.pyplot(fig6)
-
-    with st.expander("11. 🧾 Price Distribution for Top 5 Food Types"):
-        top_foods = df['Food type'].value_counts().head(5).index
-        fig7, ax7 = plt.subplots()
-        sns.boxplot(x='Food type', y='Price', data=df[df['Food type'].isin(top_foods)], ax=ax7)
-        plt.xticks(rotation=45)
-        st.pyplot(fig7)
-
-    with st.expander("12. 💸 Cheapest and Costliest Cities"):
-        st.dataframe(df.groupby('City')['Price'].agg(['min', 'max', 'mean']).sort_values(by='mean', ascending=False).head(10))
-
-    with st.expander("13. ⭐ Rating Distribution per Food Type"):
-        fig8, ax8 = plt.subplots()
-        df.groupby('Food type')['Avg ratings'].mean().sort_values(ascending=False).head(10).plot(kind='barh', ax=ax8)
-        st.pyplot(fig8)
-
-    with st.expander("14. 👎 Low-Rated Restaurants (Rating < 3.0)"):
-        st.dataframe(df[df['Avg ratings'] < 3.0][['Restaurant', 'City', 'Avg ratings', 'Price']])
-
-    if 'Area' in df.columns:
-        with st.expander("15. 🏘️ Average Price by Area"):
-            st.dataframe(df.groupby('Area')['Price'].mean().sort_values(ascending=False))
-
-    # Summary
-    st.markdown("""
-    ## ✅ Final Summary
-    - Over 18 visual and statistical insights generated
-    - Covers pricing, rating, delivery, and cuisine trends
-    - Based on restaurant data from Indian cities
-    """)
 
 else:
-    st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
+    st.title("Welcome to the Swiggy Data Analysis App")
+    st.write("Please upload your Swiggy CSV file using the sidebar to begin analysis.")

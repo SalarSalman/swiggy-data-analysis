@@ -38,7 +38,8 @@ fl = st.file_uploader(
 
 def read_file(file_input):
 
-df = None # Initialize df
+df = None 
+# Initialize df
 
 
 

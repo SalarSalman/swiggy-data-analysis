@@ -16,6 +16,7 @@ st.markdown("""
     }
     .st-emotion-cache-1c1l9q1 { /* Sidebar background */
         background-color: #333333;
+        color: #e0e0e0;
     }
     .block-container {
         padding: 2rem;
@@ -28,6 +29,12 @@ st.markdown("""
         border-radius: 10px;
         padding: 1rem;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+    }
+    /* Style for Streamlit dataframes */
+    .stDataFrame {
+        background-color: #424242;
+        color: #e0e0e0;
+        border-radius: 10px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -112,26 +119,34 @@ if not filtered_df.empty:
     st.header("Visual Insights & Analysis")
     
     with st.expander("1. 📦 Price Distribution by City"):
-        fig1 = px.box(filtered_df, x='City', y='Price', color='City', title='Price Distribution by City')
+        fig1 = px.box(filtered_df, x='City', y='Price', color='City', title='Price Distribution by City',
+                      color_discrete_sequence=px.colors.sequential.Viridis,
+                      template="plotly_dark")
         st.plotly_chart(fig1, use_container_width=True)
 
     with st.expander("2. ⭐ Price vs Average Rating"):
         fig_plotly_scatter = px.scatter(filtered_df, x='Price', y='Avg ratings', color='City',
                                         title='Price vs. Average Rating',
-                                        hover_data=['Restaurant', 'Food type'])
+                                        hover_data=['Restaurant', 'Food type'],
+                                        color_discrete_sequence=px.colors.qualitative.Plotly,
+                                        template="plotly_dark")
         st.plotly_chart(fig_plotly_scatter, use_container_width=True)
 
     with st.expander("3. 🍽️ Most Popular Cuisines (Top 10)"):
         top_food_volume = filtered_df['Food type'].value_counts().head(10)
         fig_volume = px.bar(top_food_volume, x=top_food_volume.values, y=top_food_volume.index,
-                            orientation='h', title='Most Popular Food Types')
+                            orientation='h', title='Most Popular Food Types',
+                            color_discrete_sequence=px.colors.qualitative.Vivid,
+                            template="plotly_dark")
         fig_volume.update_layout(xaxis_title="Count", yaxis_title="Food Type")
         st.plotly_chart(fig_volume, use_container_width=True)
         
     with st.expander("4. ⏱️ Price vs Delivery Time"):
         fig_plotly_price_delivery = px.scatter(filtered_df, x='Price', y='Delivery time', color='City',
                                                title='Price vs. Delivery Time',
-                                               hover_data=['Restaurant'])
+                                               hover_data=['Restaurant'],
+                                               color_discrete_sequence=px.colors.qualitative.T10,
+                                               template="plotly_dark")
         st.plotly_chart(fig_plotly_price_delivery, use_container_width=True)
 
     with st.expander("5. 💸 Cheapest and Costliest Cities"):
@@ -149,14 +164,18 @@ if not filtered_df.empty:
     with st.expander("8. 🧾 Price Distribution for Top 5 Food Types"):
         top_foods = filtered_df['Food type'].value_counts().head(5).index
         fig7 = px.box(filtered_df[filtered_df['Food type'].isin(top_foods)], x='Food type', y='Price', color='Food type',
-                      title='Price Distribution for Top 5 Food Types')
+                      title='Price Distribution for Top 5 Food Types',
+                      color_discrete_sequence=px.colors.sequential.Sunset,
+                      template="plotly_dark")
         st.plotly_chart(fig7, use_container_width=True)
         
     with st.expander("9. 🏙️ Top Cities by Restaurant Count"):
         st.subheader("Top 10 Cities by Restaurant Count")
         city_counts = filtered_df['City'].value_counts().head(10)
         fig_city = px.bar(city_counts, x=city_counts.index, y=city_counts.values,
-                          title='Top Cities by Restaurant Count')
+                          title='Top Cities by Restaurant Count',
+                          color_discrete_sequence=px.colors.qualitative.Pastel,
+                          template="plotly_dark")
         fig_city.update_layout(xaxis_title="City", yaxis_title="Count")
         st.plotly_chart(fig_city, use_container_width=True)
 
@@ -168,8 +187,10 @@ if not filtered_df.empty:
         st.subheader("Correlation between Price, Rating, and Delivery Time")
         corr_df = filtered_df[['Price', 'Avg ratings', 'Delivery time']].dropna()
         if not corr_df.empty:
-            fig_corr, ax_corr = plt.subplots()
-            sns.heatmap(corr_df.corr(), annot=True, cmap='coolwarm', ax=ax_corr)
+            fig_corr, ax_corr = plt.subplots(facecolor='#333333')
+            sns.heatmap(corr_df.corr(), annot=True, cmap='viridis', ax=ax_corr, cbar_kws={'color': '#e0e0e0'})
+            ax_corr.set_facecolor('#333333')
+            plt.tick_params(colors='#e0e0e0')
             st.pyplot(fig_corr)
         else:
             st.info("Insufficient data to calculate correlation.")
@@ -192,7 +213,9 @@ if not filtered_df.empty:
             st.subheader("Average Delivery Time by City")
             avg_delivery = filtered_df.groupby('City')['Delivery time'].mean().sort_values(ascending=False)
             fig_avg_del = px.bar(avg_delivery, x=avg_delivery.index, y=avg_delivery.values,
-                                 title='Average Delivery Time by City')
+                                 title='Average Delivery Time by City',
+                                 color_discrete_sequence=px.colors.sequential.Rainbow,
+                                 template="plotly_dark")
             fig_avg_del.update_layout(xaxis_title="City", yaxis_title="Average Delivery Time (minutes)")
             st.plotly_chart(fig_avg_del, use_container_width=True)
 
@@ -203,7 +226,9 @@ if not filtered_df.empty:
         with st.expander("14. 🍔 Price vs. Cuisine Count"):
             st.subheader("Price vs. Number of Cuisines Offered")
             fig_cuisine_count = px.box(filtered_df, x='Cuisine Count', y='Price', color='Cuisine Count',
-                                       title='Price Distribution by Cuisine Count')
+                                       title='Price Distribution by Cuisine Count',
+                                       color_discrete_sequence=px.colors.sequential.Plasma,
+                                       template="plotly_dark")
             st.plotly_chart(fig_cuisine_count, use_container_width=True)
 
     if 'Ratings' in filtered_df.columns:
@@ -212,7 +237,6 @@ if not filtered_df.empty:
             top_rated_restaurants = filtered_df.sort_values(by='Ratings', ascending=False).head(10)
             st.dataframe(top_rated_restaurants[['Restaurant', 'City', 'Avg ratings', 'Ratings', 'Price']])
     
-    # This chart is from a previous version, adding it back in the linear flow
     with st.expander("16. ⚠️ Restaurants with High/Low Price"):
         st.write("### Restaurants with ₹0 Price")
         st.dataframe(filtered_df[filtered_df['Price'] == 0])
@@ -225,3 +249,4 @@ else:
         st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
     elif uploaded_file is not None and df is not None and filtered_df.empty:
         st.warning("⚠️ No data matches the current filter settings. Please adjust the filters.")
+

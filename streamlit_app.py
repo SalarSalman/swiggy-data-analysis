@@ -176,10 +176,10 @@ if uploaded_file is not None:
         sns.boxplot(x='Price', y='Food type', data=df[df['Food type'].isin(top_food_types)], ax=ax10)
         st.pyplot(fig10)
 
-    with st.expander("24. Cheapest Food Items"):
-        st.markdown("### 24. Cheapest Food Items (Top 10)")
-        cheapest_items = df[df['Price'] > 0].sort_values(by='Price').head(10)
-        st.dataframe(cheapest_items[['Restaurant', 'Food type', 'Price', 'City']])
+    with st.expander("24. Costliest Food Items"):
+    st.markdown("### 24. Costliest Food Items (Top 10)")
+    costliest_items = df[df['Price'] > 0].sort_values(by='Price', ascending=False).head(10)
+    st.dataframe(costliest_items[['Restaurant', 'Food type', 'Price', 'City']])
 
     with st.expander("25. Top 5 Food Types in Each City (Stacked Bar)"):
         st.markdown("### 25. Top 5 Food Types in Each City")
@@ -208,3 +208,4 @@ if uploaded_file is not None:
 
 else:
     st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
+

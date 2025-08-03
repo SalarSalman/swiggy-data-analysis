@@ -180,6 +180,40 @@ if not filtered_df.empty:
         
         st.markdown("#### Cheapest Restaurants")
         st.dataframe(cheapest_items[['Restaurant', 'Food type', 'Price', 'City']])
+    
+    # --- New Insights Added ---
+    
+    if 'Delivery time' in filtered_df.columns:
+        with st.expander("13. ⏱️ Average Delivery Time by City"):
+            st.subheader("Average Delivery Time by City")
+            avg_delivery = filtered_df.groupby('City')['Delivery time'].mean().sort_values(ascending=False)
+            fig_avg_del = px.bar(avg_delivery, x=avg_delivery.index, y=avg_delivery.values,
+                                 title='Average Delivery Time by City')
+            fig_avg_del.update_layout(xaxis_title="City", yaxis_title="Average Delivery Time (minutes)")
+            st.plotly_chart(fig_avg_del, use_container_width=True)
+
+    if 'Cuisine Count' not in filtered_df.columns and 'Food type' in filtered_df.columns:
+        filtered_df['Cuisine Count'] = filtered_df['Food type'].apply(lambda x: len(str(x).split(',')) if isinstance(x, str) else 0)
+
+    if 'Cuisine Count' in filtered_df.columns:
+        with st.expander("14. 🍔 Price vs. Cuisine Count"):
+            st.subheader("Price vs. Number of Cuisines Offered")
+            fig_cuisine_count = px.box(filtered_df, x='Cuisine Count', y='Price', color='Cuisine Count',
+                                       title='Price Distribution by Cuisine Count')
+            st.plotly_chart(fig_cuisine_count, use_container_width=True)
+
+    if 'Ratings' in filtered_df.columns:
+        with st.expander("15. 🌟 Top Restaurants by Number of Ratings"):
+            st.subheader("Top Restaurants by Total Ratings (Top 10)")
+            top_rated_restaurants = filtered_df.sort_values(by='Ratings', ascending=False).head(10)
+            st.dataframe(top_rated_restaurants[['Restaurant', 'City', 'Avg ratings', 'Ratings', 'Price']])
+    
+    # This chart is from a previous version, adding it back in the linear flow
+    with st.expander("16. ⚠️ Restaurants with High/Low Price"):
+        st.write("### Restaurants with ₹0 Price")
+        st.dataframe(filtered_df[filtered_df['Price'] == 0])
+        st.write("### Restaurants with Price > ₹1300")
+        st.dataframe(filtered_df[filtered_df['Price'] > 1300])
 
 else:
     # Message to display when no file is uploaded or filter returns no data
@@ -187,3 +221,4 @@ else:
         st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
     elif uploaded_file is not None and df is not None and filtered_df.empty:
         st.warning("⚠️ No data matches the current filter settings. Please adjust the filters.")
+

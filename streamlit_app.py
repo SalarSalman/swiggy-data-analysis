@@ -11,205 +11,217 @@ st.set_page_config(layout="wide", page_title="Swiggy Data Analysis Dashboard", p
 st.markdown("""
 <style>
     .main {
-        background-color: #f5f5f5;
+        background-color: #212121; /* Dark grey background */
+        color: #e0e0e0; /* Light text for contrast */
+    }
+    .st-emotion-cache-1c1l9q1 { /* Sidebar background */
+        background-color: #333333;
     }
     .block-container {
         padding: 2rem;
     }
     h1, h2, h3, h4, h5, h6 {
-        color: #d6336c;
+        color: #FFD700; /* Gold color for headers */
     }
     .st-emotion-cache-1r4qj8m {
-        background-color: #f5f5f5;
+        background-color: #333333; /* Darker background for metrics and expanders */
         border-radius: 10px;
         padding: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
     }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🍽 Swiggy Data Analysis Dashboard")
+st.title("🍽️ Swiggy Data Analysis Dashboard")
 
-# Sidebar for File Upload
-st.sidebar.header("📁 Upload Data")
+# --- Sidebar for File Upload and Filters ---
+st.sidebar.header("📁 Upload & Filter Data")
 uploaded_file = st.sidebar.file_uploader("Upload your Swiggy CSV", type="csv")
 
+df = None
 if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-    st.sidebar.success("✅ CSV Uploaded Successfully")
+    try:
+        df = pd.read_csv(uploaded_file)
+        st.sidebar.success("✅ CSV Uploaded Successfully")
 
-    # Dataset Overview
-    st.markdown("""
-    ## 🔍 Dataset Overview
-    """)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Entries", len(df))
-    col2.metric("Total Columns", len(df.columns))
-    col3.metric("Unique Cities", df['City'].nunique())
+        # Create a copy for filtering to avoid modifying the original dataframe
+        filtered_df = df.copy()
 
-    with st.expander("📄 View Sample Data"):
-        st.dataframe(df.head())
+        # Interactive Filters
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("🔍 Filters")
+        
+        # Check if key columns exist before creating filters
+        if 'City' in filtered_df.columns and 'Avg ratings' in filtered_df.columns and 'Price' in filtered_df.columns:
+            city_options = st.sidebar.multiselect(
+                "Select City",
+                options=filtered_df['City'].unique(),
+                default=filtered_df['City'].unique()
+            )
+            
+            rating_range = st.sidebar.slider(
+                "Select Rating Range",
+                min_value=0.0,
+                max_value=5.0,
+                value=(filtered_df['Avg ratings'].min(), filtered_df['Avg ratings'].max()),
+                step=0.1
+            )
+            
+            price_max = int(filtered_df['Price'].max()) if 'Price' in filtered_df.columns and not filtered_df['Price'].isnull().all() else 1000
+            price_range = st.sidebar.slider(
+                "Select Price Range",
+                min_value=0,
+                max_value=price_max,
+                value=(0, price_max)
+            )
+            
+            # Filter the DataFrame based on user selections
+            filtered_df = filtered_df[
+                (filtered_df['City'].isin(city_options)) &
+                (filtered_df['Avg ratings'] >= rating_range[0]) &
+                (filtered_df['Avg ratings'] <= rating_range[1]) &
+                (filtered_df['Price'] >= price_range[0]) &
+                (filtered_df['Price'] <= price_range[1])
+            ]
+        else:
+            st.warning("Uploaded file is missing required columns: 'City', 'Avg ratings', or 'Price'. Filtering will not be available.")
+    except Exception as e:
+        st.error(f"An error occurred while processing the CSV file: {e}")
+        df = None
+        filtered_df = pd.DataFrame()
+else:
+    st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
+    filtered_df = pd.DataFrame() # Create an empty DataFrame to avoid errors
 
-    # Visualizations
-    st.markdown("## 📊 Visual Insights")
+# --- Main Dashboard Content ---
+if not filtered_df.empty:
+    st.header("Key Performance Indicators")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    col1.metric("Total Restaurants", len(filtered_df))
+    col2.metric("Unique Cities", filtered_df['City'].nunique())
+    col3.metric("Average Rating", f"{filtered_df['Avg ratings'].mean():.2f} / 5")
+    col4.metric("Average Price", f"₹ {filtered_df['Price'].mean():.2f}")
 
-    # Original visualizations (using matplotlib/seaborn)
+    with st.expander("📄 View Filtered Sample Data"):
+        st.dataframe(filtered_df.head(10))
+
+    st.markdown("---")
+    
+    # --- All Visualizations in a Linear Layout ---
+    st.header("Visual Insights & Analysis")
+    
     with st.expander("1. 📦 Price Distribution by City"):
-        fig1, ax1 = plt.subplots()
-        sns.boxplot(x='City', y='Price', data=df, ax=ax1)
-        ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45)
-        st.pyplot(fig1)
+        fig1 = px.box(filtered_df, x='City', y='Price', color='City', title='Price Distribution by City')
+        st.plotly_chart(fig1, use_container_width=True)
 
     with st.expander("2. ⭐ Price vs Average Rating"):
-        # Using Plotly for an interactive scatter plot
-        fig_plotly_scatter = px.scatter(df, x='Price', y='Avg ratings', color='City',
+        fig_plotly_scatter = px.scatter(filtered_df, x='Price', y='Avg ratings', color='City',
                                         title='Price vs. Average Rating',
-                                        hover_data=['Restaurant'])
+                                        hover_data=['Restaurant', 'Food type'])
         st.plotly_chart(fig_plotly_scatter, use_container_width=True)
 
-    with st.expander("3. ⚠ Outlier Detection"):
-        st.write("### Restaurants with ₹0 Price")
-        st.dataframe(df[df['Price'] == 0])
-        st.write("### Restaurants with Price > ₹1300")
-        st.dataframe(df[df['Price'] > 1300])
-
-    with st.expander("4. 💰 Average Price by Food Type"):
-        st.dataframe(df.groupby('Food type')['Price'].mean().sort_values(ascending=False).head(10))
-
-    with st.expander("5. 🌟 Top-Rated Restaurants by City"):
-        st.dataframe(df.sort_values(by='Avg ratings', ascending=False)[['Restaurant', 'City', 'Avg ratings', 'Price']].head(10))
-
-    with st.expander("6. 🍽 Most Popular Cuisines"):
-        # Using st.bar_chart for a clean, simple visualization
-        st.bar_chart(df['Food type'].value_counts().head(10))
-
-    with st.expander("7. 🕒 Delivery Time vs Rating"):
-        # Using Plotly for an interactive scatter plot
-        fig_plotly_delivery = px.scatter(df, x='Delivery time', y='Avg ratings',
-                                         title='Delivery Time vs. Average Rating',
-                                         hover_data=['Restaurant', 'Food type'])
-        st.plotly_chart(fig_plotly_delivery, use_container_width=True)
-
-    with st.expander("8. 🥗 Cuisine Popularity vs Average Rating"):
-        st.dataframe(df.groupby('Food type')['Avg ratings'].mean().sort_values(ascending=False).head(10))
-
-    with st.expander("9. 🏙 Top Cities by Restaurant Count"):
-        # Using st.bar_chart for a simple, good-looking bar chart
-        st.bar_chart(df['City'].value_counts().head(10))
-
-    with st.expander("10. ⏱ Price vs Delivery Time"):
-        # Using Plotly for an interactive scatter plot
-        fig_plotly_price_delivery = px.scatter(df, x='Price', y='Delivery time',
+    with st.expander("3. 🍽️ Most Popular Cuisines (Top 10)"):
+        top_food_volume = filtered_df['Food type'].value_counts().head(10)
+        fig_volume = px.bar(top_food_volume, x=top_food_volume.values, y=top_food_volume.index,
+                            orientation='h', title='Most Popular Food Types')
+        fig_volume.update_layout(xaxis_title="Count", yaxis_title="Food Type")
+        st.plotly_chart(fig_volume, use_container_width=True)
+        
+    with st.expander("4. ⏱️ Price vs Delivery Time"):
+        fig_plotly_price_delivery = px.scatter(filtered_df, x='Price', y='Delivery time', color='City',
                                                title='Price vs. Delivery Time',
                                                hover_data=['Restaurant'])
         st.plotly_chart(fig_plotly_price_delivery, use_container_width=True)
 
-    with st.expander("11. 🧾 Price Distribution for Top 5 Food Types"):
-        top_foods = df['Food type'].value_counts().head(5).index
-        fig7, ax7 = plt.subplots()
-        sns.boxplot(x='Food type', y='Price', data=df[df['Food type'].isin(top_foods)], ax=ax7)
-        plt.xticks(rotation=45)
-        st.pyplot(fig7)
-
-    with st.expander("12. 💸 Cheapest and Costliest Cities"):
-        st.dataframe(df.groupby('City')['Price'].agg(['min', 'max', 'mean']).sort_values(by='mean', ascending=False).head(10))
-
-    with st.expander("13. ⭐ Rating Distribution per Food Type"):
-        # Using st.bar_chart for a clean horizontal bar chart
-        df_rating_by_food = df.groupby('Food type')['Avg ratings'].mean().sort_values(ascending=False).head(10)
-        st.bar_chart(df_rating_by_food)
-
-    with st.expander("14. 👎 Low-Rated Restaurants (Rating < 3.0)"):
-        st.dataframe(df[df['Avg ratings'] < 3.0][['Restaurant', 'City', 'Avg ratings', 'Price']])
-
-    if 'Area' in df.columns:
-        with st.expander("15. 🏘 Average Price by Area"):
-            st.dataframe(df.groupby('Area')['Price'].mean().sort_values(ascending=False))
-
-
-
-    with st.expander("16. Correlation Matrix"):
-        st.markdown("### 16. Correlation Matrix")
-        fig_corr, ax_corr = plt.subplots()
-        sns.heatmap(df[['Price', 'Avg ratings', 'Delivery time']].corr(), annot=True, cmap='coolwarm', ax=ax_corr)
-        st.pyplot(fig_corr)
-
-    with st.expander("17. Price Trend by Cuisine Count"):
-        st.markdown("### 17. Price vs Cuisine Count")
-        # Ensure 'Cuisine Count' is calculated only once
-        if 'Cuisine Count' not in df.columns:
-            df['Cuisine Count'] = df['Food type'].apply(lambda x: len(str(x).split(',')) if isinstance(x, str) else 0)
-        fig_cuisine_count, ax_cc = plt.subplots()
-        sns.boxplot(x='Cuisine Count', y='Price', data=df, ax=ax_cc)
-        st.pyplot(fig_cuisine_count)
-
-    with st.expander("18. Top Cities with Highest Average Ratings"):
-        st.markdown("### 18. Cities with Highest Average Ratings")
-        top_rating_cities = df.groupby('City')['Avg ratings'].mean().sort_values(ascending=False).head(10)
-        st.dataframe(top_rating_cities)
-    
-    with st.expander("19. Delivery Time Distribution by City"):
-        st.markdown("### 19. Delivery Time Distribution by City")
-        fig_del_time, ax_del_time = plt.subplots(figsize=(10, 5))
-        sns.boxplot(x='City', y='Delivery time', data=df, ax=ax_del_time)
-        plt.xticks(rotation=45)
-        st.pyplot(fig_del_time)
-
-    with st.expander("20. Top Food Types by Volume"):
-        st.markdown("### 20. Top 20 Food Types by Volume")
-        top_food_volume = df['Food type'].value_counts().head(20)
-        st.bar_chart(top_food_volume)
-
-    with st.expander("21. Average Delivery Time by Food Type"):
-        st.markdown("### 21. Average Delivery Time by Food Type")
-        delivery_by_food = df.groupby('Food type')['Delivery time'].mean().sort_values(ascending=False).head(10)
-        st.dataframe(delivery_by_food)
-
-    with st.expander("22. Food Type vs Average Rating (Bar Chart)"):
-        st.markdown("### 22. Food Type vs Average Rating")
-        df_rating_by_food_sorted = df.groupby('Food type')['Avg ratings'].mean().sort_values().head(10)
-        fig9, ax9 = plt.subplots(figsize=(10, 6))
-        df_rating_by_food_sorted.plot(kind='barh', ax=ax9)
-        st.pyplot(fig9)
-
-    with st.expander("23. Food Type vs Price Distribution (Box Plot)"):
-        st.markdown("### 23. Food Type vs Price Distribution")
-        top_food_types = df['Food type'].value_counts().head(10).index
-        fig10, ax10 = plt.subplots(figsize=(10, 6))
-        sns.boxplot(x='Price', y='Food type', data=df[df['Food type'].isin(top_food_types)], ax=ax10)
-        st.pyplot(fig10)
-
-    with st.expander("24. Costliest Food Items"):
-        st.markdown("### 24. Costliest Food Items (Top 10)")
-        costliest_items = df[df['Price'] > 0].sort_values(by='Price', ascending=False).head(10)
-        st.dataframe(costliest_items[['Restaurant', 'Food type', 'Price', 'City']])
-    
-
-    with st.expander("25. Top 5 Food Types in Each City (Stacked Bar)"):
-        st.markdown("### 25. Top 5 Food Types in Each City")
-        top_cities = df['City'].value_counts().head(5).index
-        top_food_types = df['Food type'].value_counts().head(10).index
-        subset = df[df['City'].isin(top_cities)]
-        food_city_counts = pd.crosstab(subset['City'], subset['Food type'])
+    with st.expander("5. 💸 Cheapest and Costliest Cities"):
+        st.subheader("Cheapest and Costliest Cities (by average price)")
+        st.dataframe(filtered_df.groupby('City')['Price'].agg(['min', 'max', 'mean']).sort_values(by='mean', ascending=False))
         
-        common_food_types_in_top_cities = food_city_counts.sum(axis=0).sort_values(ascending=False).head(5).index
-        food_city_counts = food_city_counts[common_food_types_in_top_cities]
+    with st.expander("6. 🌟 Top-Rated Restaurants"):
+        st.subheader("Top-Rated Restaurants by Average Rating (Top 10)")
+        st.dataframe(filtered_df.sort_values(by='Avg ratings', ascending=False)[['Restaurant', 'City', 'Avg ratings', 'Price']].head(10))
+        
+    with st.expander("7. 👎 Low-Rated Restaurants (Rating < 3.0)"):
+        st.subheader("Low-Rated Restaurants (Rating < 3.0)")
+        st.dataframe(filtered_df[filtered_df['Avg ratings'] < 3.0][['Restaurant', 'City', 'Avg ratings', 'Price']])
+    
+    with st.expander("8. 🧾 Price Distribution for Top 5 Food Types"):
+        top_foods = filtered_df['Food type'].value_counts().head(5).index
+        fig7 = px.box(filtered_df[filtered_df['Food type'].isin(top_foods)], x='Food type', y='Price', color='Food type',
+                      title='Price Distribution for Top 5 Food Types')
+        st.plotly_chart(fig7, use_container_width=True)
+        
+    with st.expander("9. 🏙️ Top Cities by Restaurant Count"):
+        st.subheader("Top 10 Cities by Restaurant Count")
+        city_counts = filtered_df['City'].value_counts().head(10)
+        fig_city = px.bar(city_counts, x=city_counts.index, y=city_counts.values,
+                          title='Top Cities by Restaurant Count')
+        fig_city.update_layout(xaxis_title="City", yaxis_title="Count")
+        st.plotly_chart(fig_city, use_container_width=True)
 
-        fig12, ax12 = plt.subplots(figsize=(10, 6))
-        food_city_counts.plot(kind='bar', stacked=True, ax=ax12)
-        plt.title("Top 5 Food Types in Top 5 Cities")
-        plt.xlabel("City")
-        plt.ylabel("Count")
-        st.pyplot(fig12)
+    with st.expander("10. 🥗 Cuisine Popularity vs Average Rating"):
+        st.subheader("Average Rating for Popular Cuisines (Top 10)")
+        st.dataframe(filtered_df.groupby('Food type')['Avg ratings'].mean().sort_values(ascending=False).head(10))
 
-    # Summary
-    st.markdown("""
-    ## ✅ Final Summary
-    - Over 25 visual and statistical insights generated
-    - Covers pricing, rating, delivery, and cuisine trends
-    - Based on restaurant data from Indian cities
-    """)
+    with st.expander("11. Correlation Matrix"):
+        st.subheader("Correlation between Price, Rating, and Delivery Time")
+        corr_df = filtered_df[['Price', 'Avg ratings', 'Delivery time']].dropna()
+        if not corr_df.empty:
+            fig_corr, ax_corr = plt.subplots()
+            sns.heatmap(corr_df.corr(), annot=True, cmap='coolwarm', ax=ax_corr)
+            st.pyplot(fig_corr)
+        else:
+            st.info("Insufficient data to calculate correlation.")
+
+    with st.expander("12. Costliest and Cheapest Restaurants"):
+        st.subheader("Top 10 Costliest & Cheapest Restaurants")
+        costliest_items = filtered_df[filtered_df['Price'] > 0].sort_values(by='Price', ascending=False).head(10)
+        cheapest_items = filtered_df[filtered_df['Price'] > 0].sort_values(by='Price', ascending=True).head(10)
+        
+        st.markdown("#### Costliest Restaurants")
+        st.dataframe(costliest_items[['Restaurant', 'Food type', 'Price', 'City']])
+        
+        st.markdown("#### Cheapest Restaurants")
+        st.dataframe(cheapest_items[['Restaurant', 'Food type', 'Price', 'City']])
+    
+    # --- New Insights Added ---
+    
+    if 'Delivery time' in filtered_df.columns:
+        with st.expander("13. ⏱️ Average Delivery Time by City"):
+            st.subheader("Average Delivery Time by City")
+            avg_delivery = filtered_df.groupby('City')['Delivery time'].mean().sort_values(ascending=False)
+            fig_avg_del = px.bar(avg_delivery, x=avg_delivery.index, y=avg_delivery.values,
+                                 title='Average Delivery Time by City')
+            fig_avg_del.update_layout(xaxis_title="City", yaxis_title="Average Delivery Time (minutes)")
+            st.plotly_chart(fig_avg_del, use_container_width=True)
+
+    if 'Cuisine Count' not in filtered_df.columns and 'Food type' in filtered_df.columns:
+        filtered_df['Cuisine Count'] = filtered_df['Food type'].apply(lambda x: len(str(x).split(',')) if isinstance(x, str) else 0)
+
+    if 'Cuisine Count' in filtered_df.columns:
+        with st.expander("14. 🍔 Price vs. Cuisine Count"):
+            st.subheader("Price vs. Number of Cuisines Offered")
+            fig_cuisine_count = px.box(filtered_df, x='Cuisine Count', y='Price', color='Cuisine Count',
+                                       title='Price Distribution by Cuisine Count')
+            st.plotly_chart(fig_cuisine_count, use_container_width=True)
+
+    if 'Ratings' in filtered_df.columns:
+        with st.expander("15. 🌟 Top Restaurants by Number of Ratings"):
+            st.subheader("Top Restaurants by Total Ratings (Top 10)")
+            top_rated_restaurants = filtered_df.sort_values(by='Ratings', ascending=False).head(10)
+            st.dataframe(top_rated_restaurants[['Restaurant', 'City', 'Avg ratings', 'Ratings', 'Price']])
+    
+    # This chart is from a previous version, adding it back in the linear flow
+    with st.expander("16. ⚠️ Restaurants with High/Low Price"):
+        st.write("### Restaurants with ₹0 Price")
+        st.dataframe(filtered_df[filtered_df['Price'] == 0])
+        st.write("### Restaurants with Price > ₹1300")
+        st.dataframe(filtered_df[filtered_df['Price'] > 1300])
 
 else:
-    st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
-
+    # Message to display when no file is uploaded or filter returns no data
+    if uploaded_file is None:
+        st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
+    elif uploaded_file is not None and df is not None and filtered_df.empty:
+        st.warning("⚠️ No data matches the current filter settings. Please adjust the filters.")

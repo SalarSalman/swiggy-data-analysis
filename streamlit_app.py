@@ -111,6 +111,7 @@ if not filtered_df.empty:
     col4.metric("Average Price", f"₹ {filtered_df['Price'].mean():.2f}")
 
     with st.expander("📄 View Filtered Sample Data"):
+        st.subheader("Filtered Sample Data")
         st.dataframe(filtered_df.head(10))
 
     st.markdown("---")
@@ -151,7 +152,13 @@ if not filtered_df.empty:
 
     with st.expander("5. 💸 Cheapest and Costliest Cities"):
         st.subheader("Cheapest and Costliest Cities (by average price)")
-        st.dataframe(filtered_df.groupby('City')['Price'].agg(['min', 'max', 'mean']).sort_values(by='mean', ascending=False))
+        city_price_agg = filtered_df.groupby('City')['Price'].agg(['min', 'max', 'mean']).reset_index()
+        fig_city_price = px.bar(city_price_agg.sort_values(by='mean', ascending=False), x='City', y='mean',
+                                color='City', title='Cheapest and Costliest Cities by Average Price',
+                                color_discrete_sequence=px.colors.qualitative.D3, template="plotly_dark")
+        fig_city_price.update_layout(xaxis_title="City", yaxis_title="Average Price")
+        st.plotly_chart(fig_city_price, use_container_width=True)
+        st.dataframe(city_price_agg.sort_values(by='mean', ascending=False))
         
     with st.expander("6. 🌟 Top-Rated Restaurants"):
         st.subheader("Top-Rated Restaurants by Average Rating (Top 10)")
@@ -181,16 +188,36 @@ if not filtered_df.empty:
 
     with st.expander("10. 🥗 Cuisine Popularity vs Average Rating"):
         st.subheader("Average Rating for Popular Cuisines (Top 10)")
-        st.dataframe(filtered_df.groupby('Food type')['Avg ratings'].mean().sort_values(ascending=False).head(10))
+        cuisine_ratings = filtered_df.groupby('Food type')['Avg ratings'].mean().sort_values(ascending=False).head(10)
+        fig_cuisine_ratings = px.bar(cuisine_ratings, x=cuisine_ratings.values, y=cuisine_ratings.index,
+                                     orientation='h', title='Average Rating for Popular Cuisines',
+                                     color_discrete_sequence=px.colors.sequential.Blues, template="plotly_dark")
+        fig_cuisine_ratings.update_layout(xaxis_title="Average Rating", yaxis_title="Food Type")
+        st.plotly_chart(fig_cuisine_ratings, use_container_width=True)
+        st.dataframe(cuisine_ratings)
 
     with st.expander("11. Correlation Matrix"):
         st.subheader("Correlation between Price, Rating, and Delivery Time")
         corr_df = filtered_df[['Price', 'Avg ratings', 'Delivery time']].dropna()
         if not corr_df.empty:
+            # Create the matplotlib figure and axes
             fig_corr, ax_corr = plt.subplots(facecolor='#333333')
-            sns.heatmap(corr_df.corr(), annot=True, cmap='viridis', ax=ax_corr, cbar_kws={'color': '#e0e0e0'})
+            # Create the heatmap without the invalid cbar_kws argument
+            sns.heatmap(corr_df.corr(), annot=True, cmap='viridis', ax=ax_corr)
+            # Set the facecolor and tick colors for the axes
             ax_corr.set_facecolor('#333333')
             plt.tick_params(colors='#e0e0e0')
+            # Get the colorbar and set its tick colors
+            cbar = ax_corr.collections[0].colorbar
+            cbar.ax.yaxis.set_tick_params(color='#e0e0e0')
+            cbar.ax.yaxis.label.set_color('#e0e0e0')
+            cbar.ax.tick_params(axis='y', colors='#e0e0e0')
+            # Set the text color for the labels
+            ax_corr.xaxis.label.set_color('#e0e0e0')
+            ax_corr.yaxis.label.set_color('#e0e0e0')
+            ax_corr.title.set_color('#FFD700')
+            ax_corr.xaxis.set_tick_params(color='#e0e0e0')
+            ax_corr.yaxis.set_tick_params(color='#e0e0e0')
             st.pyplot(fig_corr)
         else:
             st.info("Insufficient data to calculate correlation.")
@@ -249,4 +276,3 @@ else:
         st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
     elif uploaded_file is not None and df is not None and filtered_df.empty:
         st.warning("⚠️ No data matches the current filter settings. Please adjust the filters.")
-

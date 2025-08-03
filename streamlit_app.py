@@ -19,6 +19,12 @@ st.markdown("""
     h1, h2, h3, h4, h5, h6 {
         color: #d6336c;
     }
+    .st-emotion-cache-1r4qj8m {
+        background-color: #f5f5f5;
+        border-radius: 10px;
+        padding: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -120,9 +126,7 @@ if uploaded_file is not None:
         with st.expander("15. 🏘 Average Price by Area"):
             st.dataframe(df.groupby('Area')['Price'].mean().sort_values(ascending=False))
 
-    # --- New Analysis Sections from your request ---
 
-    st.markdown("## 📊 Additional Visual Insights")
 
     with st.expander("16. Correlation Matrix"):
         st.markdown("### 16. Correlation Matrix")
@@ -208,3 +212,4 @@ if uploaded_file is not None:
 
 else:
     st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
+

@@ -1,16 +1,4 @@
-This is a great request. You can significantly improve the "attractiveness" of your Streamlit app by making the charts more interactive and using some of Streamlit's built-in chart functions which are often more modern-looking.
 
-Here is a revised version of your code that uses `plotly.express` for several of your plots. Plotly charts are interactive, allowing users to hover over data points to see specific values, which greatly enhances the user experience.
-
-### Key Changes Made:
-
-  * **Plotly Express:** Replaced a few `seaborn` and `matplotlib` plots with `plotly.express`. This automatically makes them interactive.
-  * **Streamlit Bar/Line Charts:** For simple bar charts, I've used `st.bar_chart()`, which is a native Streamlit function that is fast and has a clean, modern look.
-  * **Layout & Styling:** Kept your excellent use of `st.columns`, `st.expander`, and `st.markdown` for a clean layout. I've also added comments to help you understand the changes.
-
-You can copy and paste the entire code below to replace your current `streamlit_app.py` file.
-
-```python
 import streamlit as st
 import pandas as pd
 import seaborn as sns
@@ -221,3 +209,4 @@ if uploaded_file is not None:
 else:
     st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
 ```
+

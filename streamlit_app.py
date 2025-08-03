@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import seaborn as sns
@@ -43,6 +44,8 @@ if uploaded_file is not None:
     # Visualizations
     st.markdown("## 📊 Visual Insights")
 
+    # This section contains your original 14 visualizations, which are all excellent.
+    # The new additions will be appended below, starting from section 16.
     with st.expander("1. 📦 Price Distribution by City"):
         fig1, ax1 = plt.subplots()
         sns.boxplot(x='City', y='Price', data=df, ax=ax1)
@@ -120,10 +123,86 @@ if uploaded_file is not None:
         with st.expander("15. 🏘️ Average Price by Area"):
             st.dataframe(df.groupby('Area')['Price'].mean().sort_values(ascending=False))
 
+    # --- New Analysis Sections ---
+
+    st.markdown("## 📊 Additional Visual Insights")
+
+    with st.expander("16. Correlation Matrix"):
+        st.markdown("### 16. Correlation Matrix")
+        fig_corr, ax_corr = plt.subplots()
+        sns.heatmap(df[['Price', 'Avg ratings', 'Delivery time']].corr(), annot=True, cmap='coolwarm', ax=ax_corr)
+        st.pyplot(fig_corr)
+
+    with st.expander("17. Price Trend by Cuisine Count"):
+        st.markdown("### 17. Price vs Cuisine Count")
+        df['Cuisine Count'] = df['Food type'].apply(lambda x: len(str(x).split(',')))
+        fig_cuisine_count, ax_cc = plt.subplots()
+        sns.boxplot(x='Cuisine Count', y='Price', data=df, ax=ax_cc)
+        st.pyplot(fig_cuisine_count)
+
+    with st.expander("18. Top Cities with Highest Average Ratings"):
+        st.markdown("### 18. Cities with Highest Average Ratings")
+        top_rating_cities = df.groupby('City')['Avg ratings'].mean().sort_values(ascending=False).head(10)
+        st.dataframe(top_rating_cities)
+    
+    with st.expander("19. Delivery Time Distribution by City"):
+        st.markdown("### 19. Delivery Time Distribution by City")
+        fig_del_time, ax_del_time = plt.subplots(figsize=(10, 5))
+        sns.boxplot(x='City', y='Delivery time', data=df, ax=ax_del_time)
+        plt.xticks(rotation=45)
+        st.pyplot(fig_del_time)
+
+    with st.expander("20. Top Food Types by Volume"):
+        st.markdown("### 20. Top 20 Food Types by Volume")
+        top_food_volume = df['Food type'].value_counts().head(20)
+        st.bar_chart(top_food_volume)
+
+    with st.expander("21. Average Delivery Time by Food Type"):
+        st.markdown("### 21. Average Delivery Time by Food Type")
+        delivery_by_food = df.groupby('Food type')['Delivery time'].mean().sort_values(ascending=False).head(10)
+        st.dataframe(delivery_by_food)
+
+    with st.expander("22. Food Type vs Average Rating (Bar Chart)"):
+        st.markdown("### 22. Food Type vs Average Rating")
+        fig9, ax9 = plt.subplots(figsize=(10, 6))
+        df.groupby('Food type')['Avg ratings'].mean().sort_values().plot(kind='barh', ax=ax9)
+        st.pyplot(fig9)
+
+    with st.expander("23. Food Type vs Price Distribution (Box Plot)"):
+        st.markdown("### 23. Food Type vs Price Distribution")
+        top_food_types = df['Food type'].value_counts().head(10).index
+        fig10, ax10 = plt.subplots(figsize=(10, 6))
+        sns.boxplot(x='Price', y='Food type', data=df[df['Food type'].isin(top_food_types)], ax=ax10)
+        st.pyplot(fig10)
+
+    with st.expander("24. Cheapest Food Items"):
+        st.markdown("### 24. Cheapest Food Items (Top 10)")
+        cheapest_items = df[df['Price'] > 0].sort_values(by='Price').head(10)
+        st.dataframe(cheapest_items[['Restaurant', 'Food type', 'Price', 'City']])
+
+    with st.expander("25. Top 5 Food Types in Each City (Stacked Bar)"):
+        st.markdown("### 25. Top 5 Food Types in Each City")
+        top_cities = df['City'].value_counts().head(5).index
+        top_food_types = df['Food type'].value_counts().head(10).index  # Re-using from a previous section
+        subset = df[df['City'].isin(top_cities)]
+        food_city_counts = pd.crosstab(subset['City'], subset['Food type'])
+        
+        # Filter to the top food types to make the chart readable
+        common_food_types_in_top_cities = food_city_counts.sum(axis=0).sort_values(ascending=False).head(5).index
+        food_city_counts = food_city_counts[common_food_types_in_top_cities]
+
+        fig12, ax12 = plt.subplots(figsize=(10, 6))
+        food_city_counts.plot(kind='bar', stacked=True, ax=ax12)
+        plt.title("Top 5 Food Types in Top 5 Cities")
+        plt.xlabel("City")
+        plt.ylabel("Count")
+        st.pyplot(fig12)
+
+
     # Summary
     st.markdown("""
     ## ✅ Final Summary
-    - Over 18 visual and statistical insights generated
+    - Over 25 visual and statistical insights generated
     - Covers pricing, rating, delivery, and cuisine trends
     - Based on restaurant data from Indian cities
     """)

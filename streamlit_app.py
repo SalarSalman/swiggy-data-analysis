@@ -123,9 +123,6 @@ if uploaded_file is not None:
         with st.expander("15. 🏘️ Average Price by Area"):
             st.dataframe(df.groupby('Area')['Price'].mean().sort_values(ascending=False))
 
-    # --- New Analysis Sections ---
-
-    st.markdown("## 📊 Additional Visual Insights")
 
     with st.expander("16. Correlation Matrix"):
         st.markdown("### 16. Correlation Matrix")
@@ -209,3 +206,4 @@ if uploaded_file is not None:
 
 else:
     st.info("📂 Please upload your Swiggy CSV file to begin analysis.")
+
